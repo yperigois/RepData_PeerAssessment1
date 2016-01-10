@@ -1,25 +1,124 @@
+
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproductible Research"
+author: "yp"
+date: "10 janvier 2016"
+output: html_document
 ---
 
 
 ## Loading and preprocessing the data
 
+```{r}
+library(data.table)
+library(ggplot2)
+unzip(zipfile = "./activity.zip")
+hh<-read.csv("activity.csv")
+hh<-data.table(hh)
+hh$date<-as.Date(hh$date)
+```
+
+## What is mean and median total number of steps taken per day?
+
+-Histogram of daily steps
+
+```{r}
+
+DailySteps<-hh[,sum(steps), by="date"]
+colnames(DailySteps)<-c("date","steps")
+qplot(steps, data=DailySteps, main="number of daily steps")+geom_histogram()
+```
+
+-Mean
+
+```{r}
 
 
-## What is mean total number of steps taken per day?
+mean(DailySteps$steps, na.rm = TRUE)
 
+```
 
+-Median
+
+```{r}
+median(DailySteps$steps, na.rm = TRUE)
+```
 
 ## What is the average daily activity pattern?
 
+Activity by Day
 
+```{r}
+aa<-merge(hh,DailySteps, by="date")
+plot(aa$date, aa$steps.y, type="l", xlab="date",ylab="Daily steps",main="Daily activity pattern")
+```
+
+Activity by interval:
+
+```{r}
+ActivityByInterval<-hh[,mean(steps, na.rm=TRUE), by="interval"]
+
+plot(ActivityByInterval$interval, ActivityByInterval$V1, type="l",xlab="interval",ylab="Average number of setps",main="Daily activity pattern by interval")
+```
+
+
+Interval with maximum activity:
+```{r}
+ActivityByInterval[which.max(ActivityByInterval$V1)]
+```
 
 ## Imputing missing values
 
+Number of missing values:
+
+```{r}
+sum(is.na(hh$steps))
+```
+
+Missing values are replaced by average value of steps (accross all days) for corresponding interval
+
+```{r}
+
+for (i in 1:nrow(hh))
+{if (is.na(hh[i]$steps))
+{ t<-hh[i]$interval
+t2<-ActivityByInterval[interval==t] 
+hh[i]$steps=as.integer(t2$V1)
+
+}
+}
+
+```
+
+New mean:
+
+```{r}
+DailySteps<-hh[,sum(steps), by="date"]
+colnames(DailySteps)<-c("date","steps")
+
+mean(DailySteps$steps)
+
+```
+
+Mean is not so different because we have included data that have roughly the same value (average) as non missing values
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+hh$day<-ifelse((weekdays(hh$date)=="samedi")|(weekdays(hh$date)=="dimanche"), "weekend", "weekdays")
+
+hh1<-subset(hh, hh$day=="weekdays")
+hh2<-subset(hh, hh$day=="weekend")
+
+bb1<-hh1[,mean(steps), by="interval"]
+bb2<-hh2[,mean(steps), by="interval"]
+
+par(mfcol=c(1,2))
+
+plot(bb1$interval,bb1$V1, type="l", xlab="interval", ylab="average number of steps", main="activity pattern of week days")
+plot(bb2$interval,bb2$V1, type="l", xlab="interval", ylab="average number of steps", main="activity pattern of weekends")
+
+```
+
+On week days, acitivity start earlier in the morning and  there is a very striking peak of steps in the morning. On week ends, activity starts later and is more evenly spread over the day 
